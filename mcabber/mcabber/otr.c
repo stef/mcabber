@@ -33,6 +33,7 @@
 #include "settings.h"
 #include "utils.h"
 #include "xmpp.h"
+#include "hooks.h"
 
 #define OTR_PROTOCOL_NAME "jabber"
 
@@ -287,6 +288,7 @@ static void otr_handle_smp_tlvs(OtrlTLV *tlvs, ConnContext *ctx)
 {
   OtrlTLV *tlv = NULL;
   char *sbuf = NULL;
+  char *status = NULL;
   NextExpectedSMP nextMsg = ctx->smstate->nextExpected;
 
   tlv = otrl_tlv_find(tlvs, OTRL_TLV_SMP1);
@@ -297,6 +299,7 @@ static void otr_handle_smp_tlvs(OtrlTLV *tlvs, ConnContext *ctx)
       sbuf = g_strdup_printf("OTR: Received SMP Initiation. "
                              "Answer with /otr smpr %s $secret",
                              ctx->username);
+      status = "Init";
     }
   }
   tlv = otrl_tlv_find(tlvs, OTRL_TLV_SMP2);
@@ -307,6 +310,7 @@ static void otr_handle_smp_tlvs(OtrlTLV *tlvs, ConnContext *ctx)
       sbuf = g_strdup("OTR: Received SMP Response.");
       /* If we received TLV2, we will send TLV3 and expect TLV4 */
       ctx->smstate->nextExpected = OTRL_SMP_EXPECT4;
+      status = "Response";
     }
   }
   tlv = otrl_tlv_find(tlvs, OTRL_TLV_SMP3);
@@ -319,10 +323,13 @@ static void otr_handle_smp_tlvs(OtrlTLV *tlvs, ConnContext *ctx)
       ctx->smstate->nextExpected = OTRL_SMP_EXPECT1;
       /* Report result to user */
       if (ctx->active_fingerprint && ctx->active_fingerprint->trust &&
-         *ctx->active_fingerprint->trust != '\0')
+          *ctx->active_fingerprint->trust != '\0') {
         sbuf = g_strdup("OTR: SMP succeeded");
-      else
+        status = "Ok";
+      } else {
         sbuf = g_strdup("OTR: SMP failed");
+        status = "Fail";
+      }
     }
   }
   tlv = otrl_tlv_find(tlvs, OTRL_TLV_SMP4);
@@ -334,10 +341,13 @@ static void otr_handle_smp_tlvs(OtrlTLV *tlvs, ConnContext *ctx)
       ctx->smstate->nextExpected = OTRL_SMP_EXPECT1;
       /* Report result to user */
       if (ctx->active_fingerprint && ctx->active_fingerprint->trust &&
-         *ctx->active_fingerprint->trust != '\0')
+          *ctx->active_fingerprint->trust != '\0') {
         sbuf = g_strdup("OTR: SMP succeeded");
-      else
+        status = "Ok";
+      } else {
         sbuf = g_strdup("OTR: SMP failed");
+        status = "Fail";
+      }
     }
   }
   tlv = otrl_tlv_find(tlvs, OTRL_TLV_SMP_ABORT);
@@ -346,7 +356,19 @@ static void otr_handle_smp_tlvs(OtrlTLV *tlvs, ConnContext *ctx)
      * and prepare for the next SMP */
     sbuf = g_strdup("OTR: SMP aborted by your buddy");
     ctx->smstate->nextExpected = OTRL_SMP_EXPECT1;
+    status = "Abort";
   }
+
+#ifdef MODULES_ENABLE
+  if (status) {
+    hk_arg_t args[] = {
+      { "jid", ctx->username },
+      { "state", status },
+      { NULL, NULL },
+    };
+    hk_run_handlers(HOOK_OTR_SMP, args);
+  }
+#endif
 
   if (sbuf) {
     scr_WriteIncomingMessage(ctx->username, sbuf, 0, HBB_PREFIX_INFO, 0);
