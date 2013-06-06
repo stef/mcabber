@@ -24,6 +24,8 @@
 #define HOOK_UNREAD_LIST_CHANGE "hook-unread-list-change"
 #define HOOK_SUBSCRIPTION       "hook-subscription"
 #define HOOK_OTR_SMP            "hook-otr-smp"
+#define HOOK_OTR_START          "hook-otr-start"
+#define HOOK_OTR_END            "hook-otr-end"
 
 typedef enum {
   HOOK_HANDLER_RESULT_ALLOW_MORE_HANDLERS = 0,

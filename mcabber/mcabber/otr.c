@@ -323,7 +323,7 @@ static void otr_handle_smp_tlvs(OtrlTLV *tlvs, ConnContext *ctx)
       ctx->smstate->nextExpected = OTRL_SMP_EXPECT1;
       /* Report result to user */
       if (ctx->active_fingerprint && ctx->active_fingerprint->trust &&
-          *ctx->active_fingerprint->trust != '\0') {
+         *ctx->active_fingerprint->trust != '\0') {
         sbuf = g_strdup("OTR: SMP succeeded");
         status = "Ok";
       } else {
@@ -341,7 +341,7 @@ static void otr_handle_smp_tlvs(OtrlTLV *tlvs, ConnContext *ctx)
       ctx->smstate->nextExpected = OTRL_SMP_EXPECT1;
       /* Report result to user */
       if (ctx->active_fingerprint && ctx->active_fingerprint->trust &&
-          *ctx->active_fingerprint->trust != '\0') {
+         *ctx->active_fingerprint->trust != '\0') {
         sbuf = g_strdup("OTR: SMP succeeded");
         status = "Ok";
       } else {
@@ -753,6 +753,14 @@ static void cb_gone_secure(void *opdata, ConnContext *context)
 {
   scr_WriteIncomingMessage(context->username, "OTR: channel established", 0,
                            HBB_PREFIX_INFO, 0);
+#ifdef MODULES_ENABLE
+  hk_arg_t args[] = {
+    { "jid", context->username },
+    { "state", "start" },
+    { NULL, NULL },
+  };
+  hk_run_handlers(HOOK_OTR_START, args);
+#endif
 }
 
 /* A ConnContext has left a secure state. */
@@ -760,6 +768,14 @@ static void cb_gone_insecure(void *opdata, ConnContext *context)
 {
   scr_WriteIncomingMessage(context->username, "OTR: channel closed", 0,
                            HBB_PREFIX_INFO, 0);
+#ifdef MODULES_ENABLE
+  hk_arg_t args[] = {
+    { "jid", context->username },
+    { "state", "end" },
+    { NULL, NULL },
+  };
+  hk_run_handlers(HOOK_OTR_END, args);
+#endif
 }
 
 /* We have completed an authentication, using the D-H keys we
